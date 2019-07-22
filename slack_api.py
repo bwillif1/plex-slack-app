@@ -7,13 +7,17 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 TVDB_API = 'https://api.thetvdb.com'
 MOVIEDB_API = 'https://api.themoviedb.org/3/search/movie'
 SLACK_API = 'https://hooks.slack.com/services/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'
-TVDB_API_KEY = ''
-MOVIEDB_API_KEY = ''
+TVDB_API_KEY = os.environ['TVDB_API_KEY']
+MOVIEDB_API_KEY = os.environ['MOVIEDB_API_KEY']
 LANGUAGE = 'en-US'
+MOVIE_IMG = 'https://image.tmdb.org/t/p/original'
 
 slack_title = ''
 slack_overview = ''
-query = ''
+query = 'Black Panther'
+result_count = ''
+movie_img_url = ''
+
 
 
 def get_tv_series():
@@ -35,7 +39,6 @@ def get_tv_series():
 
 def get_movie():
     global query
-    query = 'Equalizer'
     try:
         payload = {}
         headers = {
@@ -46,13 +49,17 @@ def get_movie():
         response = r.json()
         global slack_title
         global slack_overview
+        global result_count
+        global movie_img_url
+        result_count = response['total_results']
         results = response['results']
         for i in results:
-            print(i['title'])
-            print(i['overview'])
-            slack_title = i['title']
-            slack_overview = i['overview']
-            post_to_slack()
+            if i['poster_path'] != 'null':
+                slack_title = i['title']
+                slack_overview = i['overview']
+                movie_img_url = MOVIE_IMG + i['poster_path']
+                print(movie_img_url)
+                post_to_slack()
         print(response['total_results'])
     except TimeoutError as e:
         print(f'Exception Raised: ', e)
@@ -62,22 +69,26 @@ def post_to_slack():
 
     try:
         payload = {
+        
         'attachments': [
             {
                 'title': f'{slack_title}',
                 'text': f'{slack_overview}',
+                'color': '#3AA3E3',
                 'actions': [
                     {
                         'name': 'action',
                         'type': 'button',
-                        'text': 'Yes',
-                        'style': '',
-                        'value': 'complete'
+                        'text': 'Download',
+                        'style': 'primary',
+                        'value': 'download'
                     }
-                ]
-            }
+                ],
+                'image_url': f'{movie_img_url}'
+            },
         ]
-        }
+    }
+
         headers = {
         'Accept': 'application/json', 
         'Content-Type': 'application/json'
@@ -89,3 +100,11 @@ def post_to_slack():
         raise
 
 get_movie()
+
+
+#	'type': 'section',
+#		'text': {
+#			'type': 'plain_text',
+#			'text': f'We found {result_count} movies the name {query} in it',
+ #           'emoji': 'true'
+#		    },
