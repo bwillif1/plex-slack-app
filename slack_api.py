@@ -4,9 +4,11 @@ from requests.exceptions import HTTPError
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from datetime import datetime
+import json
 
 TVDB_API = "https://api.thetvdb.com"
 MOVIEDB_API = "https://api.themoviedb.org/3/search/movie"
+MOVIEDB_URL = "https://www.themoviedb.org/movie/"
 SLACK_API = "https://hooks.slack.com/services/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"
 TVDB_API_KEY = os.environ["TVDB_API_KEY"]
 MOVIEDB_API_KEY = os.environ["MOVIEDB_API_KEY"]
@@ -15,7 +17,7 @@ MOVIE_IMG = "https://image.tmdb.org/t/p/original"
 
 slack_title = ""
 slack_overview = ""
-query = "White Men Can't Jump"
+query = "Shaft"
 result_count = ""
 movie_img_url = ""
 movie_release_date = ""
@@ -54,21 +56,31 @@ def get_movie():
         global slack_overview
         global result_count
         global movie_img_url
+        global moviedb_url
         global movie_release_date
+        global page_one_results
+        global result_response
         result_count = response["total_results"]
         results = response["results"]
+        page_one_results = len(response["results"])
+        if result_count > page_one_results:
+            result_response = f"\n But I'll only show you the first {page_one_results} :smile:"
+        else:
+            result_response = ""
         for i in results:
-            if i["poster_path"] != "null":
-                slack_title = i["title"]
-                slack_overview = i["overview"]
+            slack_title = i["title"]
+            slack_overview = i["overview"]
+            if i["poster_path"]:
                 movie_img_url = MOVIE_IMG + i["poster_path"]
+            moviedb_url = MOVIEDB_URL + str (i["id"]) + "?language=en-US"
+            if i["release_date"]:
                 movie_release_date = i["release_date"]
                 movie_release_date = datetime.strptime(movie_release_date, "%Y-%m-%d")
                 movie_release_date = movie_release_date.strftime('%B %d, %Y')
-                print(movie_release_date)
-                print(movie_img_url)
-                post_to_slack()
+            #print(movie_release_date)
+            post_to_slack()
         print(result_count)
+        print(page_one_results)
     except TimeoutError as e:
         print(f"Exception Raised: ", e)
         raise
@@ -76,25 +88,32 @@ def get_movie():
 def post_to_slack():
 
     try:
-        payload = {
-        
-        "text": f"*I found {result_count} movie title(s) with the name* `{query}` :smile:",
-        "attachments": [
-            {
-                "title": f"{slack_title} \nRelease Date: {movie_release_date}",
-                "text": f"{slack_overview}",
-                "color": "#3AA3E3",
-                "actions": [
-                    {
-                        "type": "button",
-                        "text": "Download",
-                        "style": "primary",
-                        "url": "https://flights.example.com/book/r123456"
-                    }
-                ],
-                "image_url": f"{movie_img_url}"
-            },
-        ]
+        payload = {   
+
+            "text": f"*I found {result_count} movie title(s) with the name* `{query}`{result_response}",
+            "attachments": [
+                {
+                    "title": f"{slack_title}",
+                    "title_link": f"{moviedb_url}",
+                    "text": f"*Release Date: {movie_release_date}*",
+                    "color": "#36a64f",
+                    "fields": [
+                        {
+                            "value": f"{slack_overview}"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "type": "button",
+                            "text": "Download",
+                            "style": "primary",
+                            "url": "https://flights.example.com/book/r123456"
+                        }
+                    ],
+                    "image_url": f"{movie_img_url}"
+                }
+            ],
+            "type": "divider"
     }
 
         headers = {
@@ -109,10 +128,10 @@ def post_to_slack():
 
 get_movie()
 
-
-#	"type": "section",
-#		"text": {
-#			"type": "plain_text",
-#			"text": f"We found {result_count} movies the name {query} in it",
- #           "emoji": "true"
-#		    },
+# Problems to solve:
+#
+# Storing each movie result as an attachment one at a time
+#   Ideas:
+#   1. Keep movie results in variable and post to slack the result at array 0
+#      Add a "next" button which allows user to display the result at array 1
+#      And so on for the next button
