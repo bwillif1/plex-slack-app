@@ -4,7 +4,6 @@ from requests.exceptions import HTTPError
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from datetime import datetime
-import json
 
 TVDB_API = "https://api.thetvdb.com"
 MOVIEDB_API = "https://api.themoviedb.org/3/search/movie"
@@ -75,9 +74,7 @@ def get_movie():
             moviedb_url = MOVIEDB_URL + str (i["id"]) + "?language=en-US"
             if i["release_date"]:
                 movie_release_date = i["release_date"]
-                movie_release_date = datetime.strptime(movie_release_date, "%Y-%m-%d")
-                movie_release_date = movie_release_date.strftime('%B %d, %Y')
-            #print(movie_release_date)
+                movie_release_date = datetime.strptime(movie_release_date, "%Y-%m-%d").strftime('%B %d, %Y')
             post_to_slack()
         print(result_count)
         print(page_one_results)
