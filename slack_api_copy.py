@@ -20,6 +20,7 @@ query = "Shaft"
 result_count = ""
 movie_img_url = ""
 movie_release_date = ""
+counter = 0
 
 def read_input():
     print("something")
@@ -55,10 +56,10 @@ def get_movie():
         global slack_overview
         global result_count
         global movie_img_url
-        global moviedb_url
         global movie_release_date
         global page_one_results
         global result_response
+        global counter
         result_count = response["total_results"]
         results = response["results"]
         page_one_results = len(response["results"])
@@ -66,16 +67,7 @@ def get_movie():
             result_response = f"\n But I'll only show you the first {page_one_results} :smile:"
         else:
             result_response = ""
-        for i in results:
-            slack_title = i["title"]
-            slack_overview = i["overview"]
-            if i["poster_path"]:
-                movie_img_url = MOVIE_IMG + i["poster_path"]
-            moviedb_url = MOVIEDB_URL + str (i["id"]) + "?language=en-US"
-            if i["release_date"]:
-                movie_release_date = i["release_date"]
-                movie_release_date = datetime.strptime(movie_release_date, "%Y-%m-%d").strftime('%B %d, %Y')
-            post_to_slack(results)
+        post_to_slack(results, counter)
         print(result_count)
         print(page_one_results)
     except TimeoutError as e:
@@ -88,10 +80,18 @@ def get_movie():
         print(e)
         raise
 
-def post_to_slack(results):
+def post_to_slack(results, counter):
 
     try:
-        first = results[0]
+        current_result = results[counter]
+        slack_title = current_result["title"]
+        slack_overview = current_result["overview"]
+        if current_result["poster_path"]:
+                movie_img_url = MOVIE_IMG + current_result["poster_path"]
+        moviedb_url = MOVIEDB_URL + str (current_result["id"]) + "?language=en-US"
+        if current_result["release_date"]:
+                movie_release_date = current_result["release_date"]
+                movie_release_date = datetime.strptime(movie_release_date, "%Y-%m-%d").strftime('%B %d, %Y')
         payload = {   
 
             "text": f"*I found {result_count} movie title(s) related to* `{query}`{result_response}",
